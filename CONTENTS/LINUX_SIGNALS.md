@@ -46,6 +46,8 @@ Linux Signals
 30|SIGPWR|종료|Power supply failure
 31|SIGSYS|코어 덤프|system call 잘못했을때
 
+> shell창에 kill -l을 입력하면 사용가능한 시그널(signal) 목록을 확인 할 수 있습니다.
+
 3.시그널(signal)속성
 -------------------
 - signal()의 handler인자로 함수의 주소를 명시하는 대신, 다음 값 중에 하나를 명시 할 수 있다.
