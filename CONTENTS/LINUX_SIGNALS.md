@@ -359,6 +359,7 @@ int main(void)
 		printf("SIG_SETMASK ERROR\n");
 	printf("SIGQUIT UNBLOCKED\n");
 
+	sleep(10);
 	exit(0);
 }
 
@@ -439,7 +440,8 @@ int main(void)
 	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
 		printf("SIG_SETMASK ERROR\n");
 	printf("SIGQUIT UNBLOCKED\n");
-
+	
+	sleep(10);
 	exit(0);
 }
 
