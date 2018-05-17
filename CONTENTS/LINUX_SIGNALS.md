@@ -375,7 +375,7 @@ static void sigHandler(int signo)
 #include<stdio.h>
 #include<unistd.h>
 
-void ouch(int sig)
+void sigHandler(int sig)
 {
 	printf("system : get signal %d\n", sig);
 }
@@ -383,7 +383,7 @@ void ouch(int sig)
 int main()
 {
 	struct sigaction act;
-	act.sa_handler = ouch;
+	act.sa_handler = sigHandler;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	sigaction(SIGINT, &act, 0);
@@ -448,5 +448,51 @@ int main(void)
 static void sigHandler(int signo)
 {
 	printf("caught signal %d\n", signo);
+}
+```
+
+#### 8.
+```c
+#include<stdio.h>
+#include<signal.h>
+#include<stdio.h>
+#include<stdlib.h>
+
+volatile sig_atomic_t quitflag;
+
+static void sigHandler(int signo)
+{
+	if(signo == SIGINT)
+		printf("\ninterrupt SIGINT\n");
+	else if(signo == SIGQUIT)
+		quitflag = 1;
+}
+
+int main(void)
+{
+	sigset_t newmask, oldmask, zeromask;
+
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGINT)\n");
+	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGQUIT)\n");
+
+	sigemptyset(&zeromask);
+	sigemptyset(&newmask);
+	sigaddset(&newmask, SIGQUIT);
+
+	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
+		printf("ERROR : system SIG_BLOCK\n");
+
+	while(quitflag == 0)
+		sigsuspend(&zeromask);
+
+	quitflag = 0;
+
+	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
+		printf("ERROR : system SIG_SETMASK\n");
+
+	abort();
+	exit(0);
 }
 ```
