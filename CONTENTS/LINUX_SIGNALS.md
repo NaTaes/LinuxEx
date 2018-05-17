@@ -171,10 +171,9 @@ int main(int argc, char *argv[])
 ```
 
 #### 3. 두 프로세스간 양방향 시그널 보내기
-- concept
-> process1(kill) → process2(pause)
-
-> process1(pause) ← process2(kill)
+> concept
+>> process1(kill) → process2(pause)
+>> process1(pause) ← process2(kill)
 ```c
 #include<stdio.h>
 #include<stdlib.h>
