@@ -367,3 +367,84 @@ static void sigHandler(int signo)
 	printf("caught signal %d\n", signo);
 }
 ```
+
+#### 6. 
+```c
+#include<signal.h>
+#include<stdio.h>
+#include<unistd.h>
+
+void ouch(int sig)
+{
+	printf("system : get signal %d\n", sig);
+}
+
+int main()
+{
+	struct sigaction act;
+	act.sa_handler = ouch;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	sigaction(SIGINT, &act, 0);
+	while(1)
+	{
+		printf("Hello world\n");
+		sleep(1);
+	}
+}
+```
+
+#### 7.
+```c
+#include<signal.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+
+static void sigHandler(int);
+
+int main(void)
+{
+	sigset_t newmask, oldmask, pendmask;
+	struct sigaction act;
+
+	act.sa_handler = sigHandler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	if(sigaction(SIGQUIT, &act, NULL) == -1)
+		printf("can't catch SIGQUIT\n");
+	if(sigaction(SIGINT, &act, NULL) == -1)
+		printf("can't catch SIGINT\n");
+
+	//if(signal(SIGQUIT, sigHandler) == SIG_ERR)
+	//	printf("can't catch SIGQUIT\n");
+
+	//if(signal(SIGINT, sigHandler) == SIG_ERR)
+	//	printf("can't catch SIGINT\n");
+
+	sigemptyset(&newmask);
+	sigaddset(&newmask, SIGQUIT);
+	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
+		printf("SIG_BLOCK ERROR\n");
+	printf("SIGQUIT is BLOCKED\n");
+
+	sleep(10);
+
+	if(sigpending(&pendmask) < 0)
+		printf("sigpending ERROR\n");
+	if(sigismember(&pendmask, SIGQUIT))
+		printf("SIGQUIT pending\n");
+
+	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
+		printf("SIG_SETMASK ERROR\n");
+	printf("SIGQUIT UNBLOCKED\n");
+
+	exit(0);
+}
+
+static void sigHandler(int signo)
+{
+	printf("caught signal %d\n", signo);
+}
+```
