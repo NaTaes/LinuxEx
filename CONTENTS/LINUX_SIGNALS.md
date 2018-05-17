@@ -76,15 +76,15 @@ Linux Signals
 
 static void sigHandler(int sig)
 {
-	static int count1 = 0; //SIG_INT을 count
-	static int count2 = 0; //SIG_QUIT을 count
+	static int count1 = 0; //SIGINT을 count
+	static int count2 = 0; //SIGQUIT을 count
 	{
-		if(sig == SIG_INT) //SIG_INT이면 실행
+		if(sig == SIGINT) //SIGINT이면 실행
 		{
 			count1++;
 			printf("Caught SIGINT (%d)\n", count1);
 		}
-		else if(sig == SIG_QUIT) //SIG_QUIT이면 실행
+		else if(sig == SIGQUIT) //SIGQUIT이면 실행
 		{
 			count2++;
 			printf("Caught SIGQUIT (%d)\n", count2);
@@ -119,12 +119,12 @@ int main(int argc, char *argv[])
 void sigHandler(int sig)
 {
 	printf("\nkillTest:i got signal %d\n", sig); //시그널 핸들러가 받은 시그널 번호를 출력한다.
-	(void)signal(SIG_INT, SIG_DFL); //SIG_INT를 SIG_DFL(디폴트) 기본값으로  재설정한다.
+	(void)signal(SIGINT, SIG_DFL); //SIGINT를 SIG_DFL(디폴트) 기본값으로  재설정한다.
 }
 
 int main(void)
 {
-	signal(SIG_INT, sigHandler); //SIG_INT를 시그널 핸들러로 등록한다.
+	signal(SIGINT, sigHandler); //SIGINT를 시그널 핸들러로 등록한다.
 	while(1)
 	{
 		printf("Hello world\n");
@@ -176,6 +176,7 @@ int main(int argc, char *argv[])
 
 > process1(pause) ← process2(kill)
 ```c
+//process1
 #include<stdio.h>
 #include<stdlib.h>
 #include<signal.h>
@@ -191,10 +192,10 @@ static void sigHandler(int sig)
 	{
 		count++;
 		printf("sigGen1 : SIGINT %d\n", count);
-		if(count == 5)
+		if(count == 5) //시그널 핸들러를 5번 실행하면 실행한다.
 		{
-			(void)signal(SIGINT, SIG_DFL);	
-			kill(getpid(), SIGINT);
+			(void)signal(SIGINT, SIG_DFL); //SIGINT를 기본값으로 재설정한다.
+			kill(getpid(), SIGINT); //자신의 PID를 읽어와 자기 자신에게 SIGINT를 보낸다.
 		}
 		return;
 	}
@@ -205,39 +206,67 @@ int main(int argc, char *argv[])
 	pid_t pid;
         int fd, bytecount;
 	int s;
-	char buf[10];
-	if(signal(SIGINT, sigHandler) == SIG_ERR)
+	char buf[10]; //자신의 PID를 저장할 버퍼
+	if(signal(SIGINT, sigHandler) == SIG_ERR) //SIGINT를 sigHandler함수에 등록
 		printf("ERROR :system SIGINT\n");
-	pid = getpid();
-	printf("pid = ");
-	sprintf(buf, "%d"a, pid);
+	pid = getpid(); //자신의 PID를 읽는다.
+	sprintf(buf, "%d", pid); //pid의 값을 buf에 저장한다.(문자열)
+	//pidfile.txt를 오픈한다.(읽기쓰기모드, 생성, 파일비우기)
 	fd = open("./pidfile.txt", O_RDWR | O_CREAT | O_TRUNC, \
 			S_IRWXU | S_IWGRP | S_IRGRP | S_IROTH);
-	bytecount = write(fd, buf, strlen(buf));
-	if(bytecount == 0)
-	{
+	bytecount = write(fd, buf, strlen(buf)); //파일에 buf값을 쓴다.
+	if(bytecount == 0) //write가 제대로 실행되지 않으면 0을 리턴함으로 에러를 호출한다.
 		printf("ERROR : system write pid number to pidfile.txt\n");
-	}
-	close(fd);
+	close(fd); //파일을 닫는다.
 
 	if(argc!=2 || strcmp(argv[1], "--help") == 0)
 		printf("ERROR : system segment default\n");
 
 	while(1)
 	{
-		s = kill(atoi(argv[1]), SIGINT);
-		if(s == -1)
+		s = kill(atoi(argv[1]), SIGINT); //1번째 인자인 process2의 pid에 SIGINT 시그널을 보낸다.
+		if(s == -1) //kill함수 비정상 처리
 			printf("ERROR : system don't send signal kill\n");
 		else 
-			if(s == 0)
+			if(s == 0) //kill함수 정상 처리
 				printf("Process exists and we can send it a signal\n");
-		pause();
+		pause(); //pause상태로 다음 시그널을 기다린다.
 		sleep(1);
 	}
 }
 ```
 
 ```c
+#include<stdio.h>
+#include<signal.h>
+#include<unistd.h>
+
+void sigHandler(int sig)
+{
+	printf("raise() : i got signal %d\n", sig);
+	(void)signal(SIGINT, SIG_DFL);
+}
+
+int main(void)
+{
+	int count = 0;
+	signal(SIGINT, sigHandler);
+	while(1)
+	{
+		printf("Hello World\n");
+		count++;
+		if(count == 3)
+		{
+			raise(SIGINT);
+			count = 0;
+		}
+		sleep(1);
+	}
+}
+```
+
+```c
+//process2
 #include<stdio.h>
 #include<stdlib.h>
 #include<signal.h>
@@ -247,7 +276,7 @@ int main(int argc, char *argv[])
 #include<fcntl.h>
 #include<string.h>
 
-pid_t pid;
+pid_t pid; //process1의 pid를 저장할 변수
 static void sigHandler(int sig)
 {
 	static int count = 0;
@@ -256,9 +285,9 @@ static void sigHandler(int sig)
 		printf("sigGen2 : SIGINT %d\n", count);
 		if(count == 5)
 		{
-			kill(pid, SIGINT);
-			(void)signal(SIGINT, SIG_DFL);
-			kill(getpid(), SIGINT);
+			kill(pid, SIGINT); //process1에 SIGINT 시그널을 보낸다.
+			(void)signal(SIGINT, SIG_DFL); //SIGINT를 기본값으로 설정한다.
+			kill(getpid(), SIGINT); //자신의 PID값을 읽어 자기자신에게 SIGINT를 보낸다.
 		}
 		return;
 	}
@@ -274,19 +303,17 @@ int main(int argc, char *argv[])
 
 	while(1)
 	{
-		pause();
+		pause(); //pause상태로 다음 시그널을 기다린다.
 
 		sleep(1);
-		fd = open("./pidfile.txt", O_RDONLY);
-		bytecount = read(fd, buf, 10);
-		if(bytecount == 0)
-		{
+		fd = open("./pidfile.txt", O_RDONLY); //process1의 PID값이 저장된 pidfile.txt를 읽기모드로 연다.
+		bytecount = read(fd, buf, 10); //buf에 PID값을 읽어온다.
+		if(bytecount == 0) //read가 제대로 실행되지 않았다면 0을 리턴하므로 에러를 출력한다.
 			printf("ERROR : system write pid number to pidfile.txt\n");
-		}
-		close(fd);
+		close(fd); //파일을 닫는다.
 
-		pid = atoi(buf);
-		s = kill(pid, SIGINT);
+		pid = atoi(buf); //buf(string)의 값을 int로 바꾼다.
+		s = kill(pid, SIGINT); //
 	
 		if(s == -1)
 			printf("ERROR : system don't send signal kill\n");
@@ -294,5 +321,47 @@ int main(int argc, char *argv[])
 			if(s == 0)
 				printf("Process exists and we can send it a signal\n");
 	}
+}
+```
+
+```c
+#include<signal.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+
+static void sigHandler(int);
+
+int main(void)
+{
+	sigset_t newmask, oldmask, pendmask;
+
+	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
+		printf("can't catch SIGQUIT\n");
+
+	if(signal(SIGINT, sigHanlder) == SIG_ERR)
+		printf("can't catch SIGINT\n");
+
+	sigemptyset(&newmask);
+	sigaddset(&newmask, SIGQUIT);
+	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
+		printf("SIG_BLOCK ERROR\n");
+
+	sleep(10);
+	if(sigpending(&pendmask) < 0)
+		printf("sigpending ERROR\n");
+	if(sigismember(&pendmask, SIGQUIT))
+		printf("SIGQUIT pending\n");
+
+	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
+		printf("SIG_SETMASK ERROR\n");
+	printf("SIGQUIT UNBLOCKED\n");
+
+	exit(0);
+}
+
+static void sigHandler(int signo)
+{
+	printf("caught signal %d\n", signo);
 }
 ```
