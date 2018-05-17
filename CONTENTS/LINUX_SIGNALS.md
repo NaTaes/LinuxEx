@@ -341,7 +341,7 @@ int main(void)
 	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
 		printf("can't catch SIGQUIT\n");
 
-	if(signal(SIGINT, sigHanlder) == SIG_ERR)
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
 		printf("can't catch SIGINT\n");
 
 	sigemptyset(&newmask);
