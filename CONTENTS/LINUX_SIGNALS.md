@@ -317,7 +317,7 @@ int main(void)
 		count++;
 		if(count == 3) //count가 3이 된다면 실행한다.
 		{
-			raise(SIGINT); //SIGINT를 발생시킨다.
+			raise(SIGINT); //SIGINT를 발생시킨다. kill(getpid(), SIGINT)와 동일하게 수행된다.
 			count = 0;
 		}
 		sleep(1);
@@ -325,7 +325,8 @@ int main(void)
 }
 ```
 
-#### 5. 
+#### 5. sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
+
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -369,7 +370,7 @@ static void sigHandler(int signo)
 }
 ```
 
-#### 6. 
+#### 6. sigaction()함수 사용
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -395,7 +396,7 @@ int main()
 }
 ```
 
-#### 7.
+#### 7. 6번코드 + sigaction()
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -451,7 +452,7 @@ static void sigHandler(int signo)
 }
 ```
 
-#### 8.
+#### 8. sigsuspend()함수 
 ```c
 #include<stdio.h>
 #include<signal.h>
