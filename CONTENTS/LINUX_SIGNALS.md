@@ -169,3 +169,126 @@ int main(int argc, char *argv[])
 }
 
 ```
+
+#### 3. 두 프로세스간 양방향 시그널 보내기
+```c
+#include<stdio.h>
+#include<stdlib.h>
+#include<signal.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<string.h>
+
+static void sigHandler(int sig)
+{
+	static int count = 0;
+	{
+		count++;
+		printf("sigGen1 : SIGINT %d\n", count);
+		if(count == 5)
+		{
+			(void)signal(SIGINT, SIG_DFL);	
+			kill(getpid(), SIGINT);
+		}
+		return;
+	}
+}
+
+int main(int argc, char *argv[])
+{
+	pid_t pid;
+        int fd, bytecount;
+	int s;
+	char buf[10];
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+	pid = getpid();
+	printf("pid = ");
+	sprintf(buf, "%d"a, pid);
+	fd = open("./pidfile.txt", O_RDWR | O_CREAT | O_TRUNC, \
+			S_IRWXU | S_IWGRP | S_IRGRP | S_IROTH);
+	bytecount = write(fd, buf, strlen(buf));
+	if(bytecount == 0)
+	{
+		printf("ERROR : system write pid number to pidfile.txt\n");
+	}
+	close(fd);
+
+	if(argc!=2 || strcmp(argv[1], "--help") == 0)
+		printf("ERROR : system segment default\n");
+
+	while(1)
+	{
+		s = kill(atoi(argv[1]), SIGINT);
+		if(s == -1)
+			printf("ERROR : system don't send signal kill\n");
+		else 
+			if(s == 0)
+				printf("Process exists and we can send it a signal\n");
+		pause();
+		sleep(1);
+	}
+}
+```
+
+```c
+#include<stdio.h>
+#include<stdlib.h>
+#include<signal.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<string.h>
+
+pid_t pid;
+static void sigHandler(int sig)
+{
+	static int count = 0;
+	{
+		count++;
+		printf("sigGen2 : SIGINT %d\n", count);
+		if(count == 5)
+		{
+			kill(pid, SIGINT);
+			(void)signal(SIGINT, SIG_DFL);
+			kill(getpid(), SIGINT);
+		}
+		return;
+	}
+}
+
+int main(int argc, char *argv[])
+{
+	int fd, bytecount;
+	int s;
+	char buf[10];
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+
+	while(1)
+	{
+		pause();
+
+		sleep(1);
+		fd = open("./pidfile.txt", O_RDONLY);
+		bytecount = read(fd, buf, 10);
+		if(bytecount == 0)
+		{
+			printf("ERROR : system write pid number to pidfile.txt\n");
+		}
+		close(fd);
+
+		pid = atoi(buf);
+		s = kill(pid, SIGINT);
+	
+		if(s == -1)
+			printf("ERROR : system don't send signal kill\n");
+		else 
+			if(s == 0)
+				printf("Process exists and we can send it a signal\n");
+	}
+}
+```
