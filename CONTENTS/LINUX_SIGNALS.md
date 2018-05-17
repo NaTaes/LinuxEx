@@ -62,10 +62,11 @@ Linux Signals
 - 시그널 핸들러의 실행은 언제든지 메인 프로그램의 흐름을 멈출 수 있다.
 - 커널은 프로세스를 위해 핸들러를 호출하고, 핸들러가 리턴될 때 프로그램의 실행은 핸들러가 인터럽트 한 곳에서 다시 시작한다.
 
-### 시그널의 전달 및 핸들러 수행
+### - 시그널의 전달 및 핸들러 수행
 ![signalhandler](./../img/시그널핸들러.PNG)
 
-### 시그널핸들러 실습
+5. 시그널(signal) 실습 코드
+--------------------------
 
 #### 1. SIG_INT와 SIG_QUIT를 받는 시그널 핸들러
 ```c
@@ -295,7 +296,7 @@ int main(int argc, char *argv[])
 }
 ```
 
-#### 4. 
+#### 4. raise()함수 사용
 ```c
 #include<stdio.h>
 #include<signal.h>
@@ -315,9 +316,9 @@ int main(void)
 	{
 		printf("Hello World\n");
 		count++;
-		if(count == 3)
+		if(count == 3) //count가 3이 된다면 실행한다.
 		{
-			raise(SIGINT);
+			raise(SIGINT); //SIGINT를 발생시킨다.
 			count = 0;
 		}
 		sleep(1);
