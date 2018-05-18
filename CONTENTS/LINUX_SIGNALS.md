@@ -70,6 +70,8 @@ Linux Signals
 5.시그널(signal) 실습 코드
 -------------------------
 #### 1. SIG_INT와 SIG_QUIT를 받는 시그널 핸들러
+signal()은 시그널 처리를 설정한다.
+
 구분|설명
 ----|----
 헤더|signal.h
@@ -82,6 +84,8 @@ Linux Signals
 SIG_DFL|기본값으로 설정한다.
 SIG_IGN|시그널을 무시한다.
 함수이름|시그널이 발생하면 지정된 함수를 호출한다.
+
+kill()은 프로세스에 시그널을 전송한다.
 
 구분|설명
 ----|----
@@ -325,6 +329,8 @@ int main(int argc, char *argv[])
 ```
 
 #### 4. raise()함수 사용
+raise()은 프로세스 자신에게 시그널을 보낸다.<br />kill(getpid(), SIGINT) == raise(SIGINT)
+
 구분|설명
 ----|----
 헤더|signal.h
@@ -362,6 +368,8 @@ int main(void)
 ```
 
 #### 5. sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
+sigemptyset()은 signal sets를 비운다.
+
 구분|설명
 ----|----
 헤더|signal.h
@@ -369,12 +377,16 @@ int main(void)
 인수|signal_t \*set 시그널 집합 변수
 반환|0 집합변수를 성공적으로 비웠음<br />-1 실패
 
+sigaddset()은 signal sets에 시그널을 추가한다.
+
 구분|설명
 ----|----
 헤더|signal.h
 형태|**int** sigaddset(sigset_t \*set, **int** signum)
 인수|signal_t \*set 시그널 집합 변수<br />**int** signum 시그널 번호
 반환|0 집합변수를 성공적으로 비웠음<br />-1 실패
+
+sigprocmask()은 시그널 집합에 대해 how 인수값에 따라 블록 여부를 지정합니다.
 
 구분|설명
 ----|----
@@ -389,6 +401,8 @@ SIG_BLOCK|기존에 블록화된 시그널 집합에 두번째 인수 set 시그
 SIG_UNBLOCK|기존에 블록화된 시그널 집합에서 두번째 인수 set 시그널 집합에 있는 시그널을 제거
 SIG_SETMASK|이전 블록된 시그널 집합을 모두 지우고 두 번째 인수인 set 시그널 집합으로 설정
 
+sigpending()은 시그널을 블록된 상태에서 어떤 시그널이 발생해서 블록되었는지를 알 수 있습니다. 즉, 발생했지만 블록되어 대기 중인 시그널이 무엇인지를 확인합니다.
+
 구분|설명
 ----|----
 헤더|signal.h
@@ -396,10 +410,12 @@ SIG_SETMASK|이전 블록된 시그널 집합을 모두 지우고 두 번째 인
 인수|signal_t \*set 블록화된 시그널집합을 담을 변수
 반환|0 성공<br />-1 실패
 
+sigismember()은 시그널 집합 변수에 지정한 시그널이 있는지를 확인합니다.
+
 구분|설명
 ----|----
 헤더|signal.h
-형태|**int** sigemptyset(sigset_t \*set, **int** signum)
+형태|**int** sigismember(sigset_t \*set, **int** signum)
 인수|signal_t \*set 시그널 집합 변수<br />**int** signum 확인할 시그널 번호
 반환|1 집합에 시그널이 있음<br />0 집합에 시그널이 없음<br />-1 확인에 실패했음
 
