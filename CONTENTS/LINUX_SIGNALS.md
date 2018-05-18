@@ -636,3 +636,153 @@ int main(void)
 	exit(0);
 }
 ```
+
+#### 9. 시그널(signal)을 받았을 때 시간, 시그널 저장하기
+```c
+//Process1
+#include<stdio.h>
+#include<stdlib.h>
+#include<signal.h>
+#include<unistd.h>
+#include<string.h>
+
+pid_t pid;
+volatile sig_atomic_t quitflag;
+
+static void sigHandler(int sig)
+{
+	static int count1 = 0;
+	static int count2 = 0;
+	int s;
+	{
+		if(sig == SIGINT)
+		{
+			s = kill(pid, SIGINT);
+			if(s == -1)
+				printf("ERROR : system don't send signal SIGINT\n");
+			else if(s == 0)
+				printf("Process exists and we can send it a signal\n");
+			count1++;
+			printf("SEND SIGNAL SIGINT %d : %d\n", sig, count1);
+		}
+		else if(sig == SIGQUIT)
+		{
+			s = kill(pid, SIGQUIT);
+			if(s == -1)
+				printf("ERROR : system don't send signal SIGQUIT\n");
+			else if(s == 0)
+				printf("Process exists and we can send it a signal\n");
+			count2++;
+			printf("SEND SIGNAL SIGQUIT %d : %d\n", sig, count2);
+			if(count2 == 5)
+			{
+				quitflag = 1;
+				s = kill(pid, SIGUSR2);
+				if(s == -1)
+					printf("ERROR : system don't send signal SIGUSR2\n");
+				else if(s == 0)
+					printf("Process exists and we can send it a signal\n");
+			}
+		}
+		return;
+	}
+}
+
+int main(int argc, char *argv[])
+{
+	int s;
+
+	sigset_t zeromask;
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGQUIT\n");
+
+	if(argc!=2 || strcmp(argv[1], "--help") == 0)
+		printf("ERROR : system segment default\n");
+	pid = atoi(argv[1]);
+
+	s = kill(atoi(argv[1]), SIGUSR1);
+	if(s == -1)
+		printf("ERROR : system don't send signal SIGUSR1\n");
+	else if(s == 0)
+		printf("Process exists and we can send it a signal\n");
+
+	printf("IF SIGQUIT COUNT == 5, you send signal SIGUSR2\n");
+	while(quitflag == 0)
+		sleep(1);
+
+	exit(0);
+}
+```
+
+```c
+//Process2
+#include<stdio.h>
+#include<stdlib.h>
+#include<signal.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<string.h>
+#include<time.h>
+
+#define BUFSIZE 256
+
+volatile sig_atomic_t quitflag;
+
+static void sigHandler(int sig)
+{
+	int i, j;
+	time_t UTCtime;
+	struct tm *tm;
+	char buf[BUFSIZE];
+        static int fd;
+	int bytecount;
+	
+	if(sig == SIGINT || sig == SIGQUIT)
+	{
+		printf("GET signal %d\n", sig);
+		time(&UTCtime);
+		tm = localtime(&UTCtime);
+		strftime(buf, sizeof(buf), "%Y-%m-%e %H:%M:%S", tm);
+		if(sig==SIGINT)
+			strcat(buf, " [SIGINT]\n");
+		else
+			strcat(buf, " [SIGQUIT]\n");
+
+		write(fd, buf, strlen(buf));		
+	}
+	else if(sig == SIGUSR2)
+	{
+		printf("GET signal SIGUSR2 %d\n", sig);
+		close(fd);
+		quitflag = 1;
+	}
+	else if(sig == SIGUSR1)
+	{
+		printf("GET signal SIGUSR1 %d\n", sig);
+		fd = open("./getsigtime.txt", O_RDWR | O_APPEND | O_CREAT, \
+			S_IRWXU | S_IWGRP | S_IRGRP | S_IROTH);
+		if(bytecount == 0)
+			printf("ERROR : system write pid number to pidfile.txt\n");
+	}
+	return;
+}
+
+int main(int argc, char *argv[])
+{
+	if(signal(SIGINT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+	if(signal(SIGUSR1, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+	if(signal(SIGUSR2, sigHandler) == SIG_ERR)
+		printf("ERROR :system SIGINT\n");
+
+	while(quitflag == 0)
+		sleep(1);
+}
+```
