@@ -70,6 +70,33 @@ Linux Signals
 5.시그널(signal) 실습 코드
 -------------------------
 #### 1. SIG_INT와 SIG_QUIT를 받는 시그널 핸들러
+구분|설명
+----|----
+헤더|signal.h
+형태|**void**(\*signal(**int** signum, **void** (\*handler)(**int**)))(**int**)
+인수|**int** signum 시그널 번호<br />**void** (\*handler)(**int**) 시그널을 처리할 핸들러
+반환|**void** \*()(**int**) 이전에 설정된 시그널 핸들러
+
+유형|의미
+----|----
+SIG_DFL|기본값으로 설정한다.
+SIG_IGN|시그널을 무시한다.
+함수이름|시그널이 발생하면 지정된 함수를 호출한다.
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** kill(pid_t pid, **int** sig)
+인수|pid_t pid 시그널을 받을 프로세스 ID<br />**int** sig 시그널 번호
+반환|0 성공<br />-1 실패
+
+pid|의미
+----|----
+양의 정수|지정한 프로세스 ID에만 시그널을 전송
+0|함수를 호출하는 프로세스와 같은 그룹에 있는 모든 프로세스에 시그널을 전송
+-1|함수를 호출하는 프로세스가 전송할 수 있는 권한을 가진 모든 프로세스에 시그널을 전송
+-1 이외의 음수|첫번째 인수 pid 의 절대값 프로세스 그룹에 속하는 모든 프로세스에 시그널을 전송
+
 ```c
 #include<stdio.h>
 #include<signal.h>
@@ -298,6 +325,13 @@ int main(int argc, char *argv[])
 ```
 
 #### 4. raise()함수 사용
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** raise(**int** sig);
+인수|**int** sig	전송하려는 시그널 번호
+반환|0 성공<br />0 이외의 값 실패
+
 ```c
 #include<stdio.h>
 #include<signal.h>
