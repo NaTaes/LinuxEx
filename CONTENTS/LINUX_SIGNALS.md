@@ -502,11 +502,11 @@ void sigHandler(int sig)
 
 int main()
 {
-	struct sigaction act;
-	act.sa_handler = sigHandler;
-	sigemptyset(&act.sa_mask);
+	struct sigaction act; //sigaction 구조체 선언
+	act.sa_handler = sigHandler; //핸들러 지정
+	sigemptyset(&act.sa_mask); //sa_mask를 비운다.
 	act.sa_flags = 0;
-	sigaction(SIGINT, &act, 0);
+	sigaction(SIGINT, &act, 0); //SIGINT 처리를 설정
 	while(1)
 	{
 		printf("Hello world\n");
@@ -533,11 +533,15 @@ int main(void)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 
+	//바뀐부분-------------------------------------
+	
 	if(sigaction(SIGQUIT, &act, NULL) == -1)
 		printf("can't catch SIGQUIT\n");
 	if(sigaction(SIGINT, &act, NULL) == -1)
 		printf("can't catch SIGINT\n");
-
+		
+	//---------------------------------------------
+	
 	//if(signal(SIGQUIT, sigHandler) == SIG_ERR)
 	//	printf("can't catch SIGQUIT\n");
 
@@ -581,6 +585,13 @@ sigsuspend()은 시그널 블록을 설정하고, 시그널이 도착할 때 까
 인수|sigset_t \*mask 블록될 시그널 집합
 반환|0 성공<br />-1	실패
 
+abort()은 강제로 프로그램을 비정상적으로 종료시킨다.
+
+구분|설명
+----|----
+헤더|stdlib.h
+형태|**void** abort(**void**)
+
 ```c
 #include<stdio.h>
 #include<signal.h>
@@ -591,9 +602,9 @@ volatile sig_atomic_t quitflag;
 
 static void sigHandler(int signo)
 {
-	if(signo == SIGINT)
+	if(signo == SIGINT) //SIGINT일때 실행
 		printf("\ninterrupt SIGINT\n");
-	else if(signo == SIGQUIT)
+	else if(signo == SIGQUIT) //SIGQUIT일때 실행
 		quitflag = 1;
 }
 
@@ -606,22 +617,22 @@ int main(void)
 	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
 		printf("ERROR : system signal(SIGQUIT)\n");
 
-	sigemptyset(&zeromask);
-	sigemptyset(&newmask);
-	sigaddset(&newmask, SIGQUIT);
+	sigemptyset(&zeromask); //zeromask를 비운다.
+	sigemptyset(&newmask); //newmask를 비운다.
+	sigaddset(&newmask, SIGQUIT); //newmask에 SIGQUIT을 추가한다.
 
-	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
+	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0) //SIGQUIT을 블록시킨다.
 		printf("ERROR : system SIG_BLOCK\n");
 
-	while(quitflag == 0)
-		sigsuspend(&zeromask);
-
-	quitflag = 0;
+	while(quitflag == 0) //quitflag가 0이면 실행
+		sigsuspend(&zeromask); //zeromask는 비워져있기 때문에 sigsuspend는 모든 시그널을 기다리고 있다.
+		//현재 SIGQUIT은 블록되에 있지만, sigsuspend()는 블록되어 있는 대기 시그널도 확인한다.
+		//zeromask에 SIGQUIT을 추가한다면, sigsuspend()는 SIGQUIT는 기다리지 않는다.
 
 	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
 		printf("ERROR : system SIG_SETMASK\n");
 
-	abort();
+	abort(); //프로그램을 비정상적으로 종료시킨다.
 	exit(0);
 }
 ```
