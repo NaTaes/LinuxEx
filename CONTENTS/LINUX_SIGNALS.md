@@ -540,14 +540,14 @@ int main(void)
 	if(sigaction(SIGINT, &act, NULL) == -1)
 		printf("can't catch SIGINT\n");
 		
-	//---------------------------------------------
-	
 	//if(signal(SIGQUIT, sigHandler) == SIG_ERR)
 	//	printf("can't catch SIGQUIT\n");
 
 	//if(signal(SIGINT, sigHandler) == SIG_ERR)
 	//	printf("can't catch SIGINT\n");
 
+	//---------------------------------------------
+	
 	sigemptyset(&newmask);
 	sigaddset(&newmask, SIGQUIT);
 	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
