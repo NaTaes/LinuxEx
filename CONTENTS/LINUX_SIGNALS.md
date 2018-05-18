@@ -655,18 +655,18 @@ int main(int argc, char *argv[])
 	char buf[BUFSIZE];
 	struct timeval UTCtime_u;
 
-	time(&UTCtime);
-	printf("time : %u\n", (unsigned)UTCtime); //UTC now time print
+	time(&UTCtime); //현재시간을 UTCtime에 저장
+	printf("time : %u\n", (unsigned)UTCtime); //UTC 현재 시간 출력
 
-	gettimeofday(&UTCtime_u, NULL); //get UTC now time(micro second)
+	gettimeofday(&UTCtime_u, NULL); //UTC 현재 시간을 micro초 단위로 가져온다.
 	printf("gettimeofday : %ld/%d\n", UTCtime_u.tv_sec, UTCtime_u.tv_usec);
 
-	printf("ctime : %s", ctime(&UTCtime)); //now time to string and print
+	printf("ctime : %s", ctime(&UTCtime)); //현재 시간을 문자열로 바꿔서 출력한다.
 
 	tm = localtime(&UTCtime); //tm = gmtime(&UTCtime);
-	printf("asctime : %s", asctime(tm)); //now time, use tm struct print
+	printf("asctime : %s", asctime(tm)); //현재 시간을 tm 구조체를 이용해서 출력한다.
 
-	strftime(buf, sizeof(buf), "%Y/%m/%e %A %H:%M:%S", tm); //user time string set
+	strftime(buf, sizeof(buf), "%Y/%m/%e %A %H:%M:%S", tm); //사용자정의 시간 문자열로 set한다.
 
 	printf("strftime : %s\n", buf);
 
@@ -694,7 +694,7 @@ static void sigHandler(int sig)
 	{
 		if(sig == SIGINT)
 		{
-			s = kill(pid, SIGINT);
+			s = kill(pid, SIGINT); //Process2에 SIGINT를 보낸다.
 			if(s == -1)
 				printf("ERROR : system don't send signal SIGINT\n");
 			else if(s == 0)
@@ -704,17 +704,17 @@ static void sigHandler(int sig)
 		}
 		else if(sig == SIGQUIT)
 		{
-			s = kill(pid, SIGQUIT);
+			s = kill(pid, SIGQUIT); //Process2에 SIGQUIT을 보낸다.
 			if(s == -1)
 				printf("ERROR : system don't send signal SIGQUIT\n");
 			else if(s == 0)
 				printf("Process exists and we can send it a signal\n");
 			count2++;
 			printf("SEND SIGNAL SIGQUIT %d : %d\n", sig, count2);
-			if(count2 == 5)
+			if(count2 == 5) //SIGQUIT이 5번 발생되면 실행한다.
 			{
 				quitflag = 1;
-				s = kill(pid, SIGUSR2);
+				s = kill(pid, SIGUSR2); //Process2에 SIGUSR2를 보낸다.
 				if(s == -1)
 					printf("ERROR : system don't send signal SIGUSR2\n");
 				else if(s == 0)
@@ -729,7 +729,6 @@ int main(int argc, char *argv[])
 {
 	int s;
 
-	sigset_t zeromask;
 	if(signal(SIGINT, sigHandler) == SIG_ERR)
 		printf("ERROR :system SIGINT\n");
 	if(signal(SIGQUIT, sigHandler) == SIG_ERR)
@@ -739,7 +738,7 @@ int main(int argc, char *argv[])
 		printf("ERROR : system segment default\n");
 	pid = atoi(argv[1]);
 
-	s = kill(atoi(argv[1]), SIGUSR1);
+	s = kill(atoi(argv[1]), SIGUSR1); //Process1에 SIGUSR1을 보낸다.
 	if(s == -1)
 		printf("ERROR : system don't send signal SIGUSR1\n");
 	else if(s == 0)
