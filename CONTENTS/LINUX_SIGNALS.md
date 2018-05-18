@@ -328,7 +328,10 @@ int main(void)
 ```
 
 #### 5. sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
-
+헤더|signal.h
+형태|int sigemptyset(sigset_t *set)
+인수|signal_t *set 시그널 집합 변수
+반환|0 집합변수를 성공적으로 비웠음 -1 실패
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -347,18 +350,18 @@ int main(void)
 	if(signal(SIGINT, sigHandler) == SIG_ERR)
 		printf("can't catch SIGINT\n");
 
-	sigemptyset(&newmask);
-	sigaddset(&newmask, SIGQUIT);
-	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0)
-		printf("SIG_BLOCK ERROR\n");
+	sigemptyset(&newmask); //newmask를 비운다.(signal sets를 전부 0으로 비운다.)
+	sigaddset(&newmask, SIGQUIT); //newmask(signal sets)에 SIGQUIT을 set한다.
+	if(sigprocmask(SIG_BLOCK, &newmask, &oldmask) < 0) //newmask를 이용해 SIG_BLOCK처리를 한다. 원래 가지고 있던 signal sets는 oldmask에 저장한다.
+		printf("SIG_BLOCK ERROR\n"); //sigprocmask함수의 리턴값이 0보다 작다면 함수가 비정상작동했음으로 에러메세지를 띄운다.
 
 	sleep(10);
-	if(sigpending(&pendmask) < 0)
-		printf("sigpending ERROR\n");
-	if(sigismember(&pendmask, SIGQUIT))
+	if(sigpending(&pendmask) < 0) //sigpending함수를 사용해서 현재 처리되지 않은 signal을 확인 후 pendmask에 저장
+		printf("sigpending ERROR\n"); //sigpending함수의 리턴값이 0보다 작다면 함수가 비정상작동했음으로 에러메세지를 띄운다.
+	if(sigismember(&pendmask, SIGQUIT)) //sigismember함수를 사용해서 pendmask에 SIGQUIT이 set되었는지 확인한다.(set되었다면 1을 리턴)
 		printf("SIGQUIT pending\n");
 
-	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
+	if(sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0) //원래 signal sets의 값을 저장한 oldmask를 다시 SIG_SETMASK를 이용해 set해준다.
 		printf("SIG_SETMASK ERROR\n");
 	printf("SIGQUIT UNBLOCKED\n");
 
