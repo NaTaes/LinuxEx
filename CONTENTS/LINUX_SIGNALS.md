@@ -447,6 +447,33 @@ static void sigHandler(int signo)
 ```
 
 #### 6. sigaction()함수 사용
+sigaction()은 signal()보다 향상된 기능을 제공하는 시그널 처리를 결정하는 함수다.
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigaction(**int** signum, **const struct** sigaction \*act, **struct** sigaction \*oldact);
+인수|**int** signum 시그널 번호<br />**struct** sigaction \*act 설정할 행동. 즉, 새롭게 지정할 처리 행동<br />**struct** sigaction \*oldact 이전 행동, 이 함수를 호출하기 전에 지정된 행동 정보가 입력됩니다.
+반환|0 성공<br />-1	실패
+
+```
+struct sigaction {
+    void (*sa_handler)(int); //시그널을 처리하기 위한 핸들러. SIG_DFL, SIG_IGN 또는 핸들러 함수
+    void (*sa_sigaction)(int, siginfo_t *, void *); //밑의 sa_flags가 SA_SIGINFO일때 sa_handler 대신에 동작하는 핸들러
+    sigset_t sa_mask; //시그널을 처리하는 동안 블록화할 시그널 집합의 마스크
+    int sa_flags; //아래 설명을 참고하세요.
+    void (*sa_restorer)(void); //사용해서는 안됩니다.
+}
+```
+
+옵션|의미
+----|---
+SA_NOCLDSTOP|signum이 SIGCHILD일 경우 자식 프로세스가 멈추었을 때 부모 프로세스에 SIGCHILD가 전달되지 않는다.
+SA_ONESHOT<br />또는 SA_RESETHAND|시그널을 받으면 설정된 행도을 취하고 시스템 기본 설정인 SIG_DFL로 재설정된다.
+SA_RESTART|시그널 처리에 의해 방해 받은 시스템 호출은 시그널 처리가 끝나면 재시작한다.
+SA_NOMASK<br />또는 SA_NODEFER|시그널을 처리하는 동안에 전달되는 시그널은 블록되지 않는다.
+SA_SIGINFO|이 옵션이 사용되면 sa_handler대신에 sa_sigaction이 동작되며, sa_handler 보다 더 다양한 인수를 받을 수 있습니다. sa_sigaction이 받는 인수에는 시그널 번호, 시그널이 만들어진 이유, 시그널을 받는 프로세스의 정보입니다.
+
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -528,7 +555,16 @@ static void sigHandler(int signo)
 }
 ```
 
-#### 8. sigsuspend()함수 
+#### 8. sigsuspend()함수
+sigsuspend()은 시그널 블록을 설정하고, 시그널이 도착할 때 까지 프로세스를 중단합니다.
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigsuspend(**const** sigset_t \*mask);
+인수|sigset_t \*mask 블록될 시그널 집합
+반환|0 성공<br />-1	실패
+
 ```c
 #include<stdio.h>
 #include<signal.h>
