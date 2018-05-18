@@ -328,10 +328,47 @@ int main(void)
 ```
 
 #### 5. sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
+구분|설명
+----|----
 헤더|signal.h
-형태|int sigemptyset(sigset_t *set)
-인수|signal_t *set 시그널 집합 변수
-반환|0 집합변수를 성공적으로 비웠음 -1 실패
+형태|**int** sigemptyset(sigset_t \*set)
+인수|signal_t \*set 시그널 집합 변수
+반환|0 집합변수를 성공적으로 비웠음<br />-1 실패
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigaddset(sigset_t \*set, **int** signum)
+인수|signal_t \*set 시그널 집합 변수<br />**int** signum 시그널 번호
+반환|0 집합변수를 성공적으로 비웠음<br />-1 실패
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigprocmask(**int** how, **const** sigset_t \*set, sigset_t \*oldset)
+인수|**int** how 시그널 집합을 어떻게 처리할지 방법을 지정<br />signal_t \*set 이번에 설정할 시그널 집합<br />signal_t \*oldset 이전에 블록된 시그널 집합
+반환|0 성공<br />-1 실패
+
+how|의미
+---|----
+SIG_BLOCK|기존에 블록화된 시그널 집합에 두번째 인수 set 시그널 집합을 추가
+SIG_UNBLOCK|기존에 블록화된 시그널 집합에서 두번째 인수 set 시그널 집합에 있는 시그널을 제거
+SIG_SETMASK|이전 블록된 시그널 집합을 모두 지우고 두 번째 인수인 set 시그널 집합으로 설정
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigpending(sigset_t \*set)
+인수|signal_t \*set 블록화된 시그널집합을 담을 변수
+반환|0 성공<br />-1 실패
+
+구분|설명
+----|----
+헤더|signal.h
+형태|**int** sigemptyset(sigset_t \*set, **int** signum)
+인수|signal_t \*set 시그널 집합 변수<br />**int** signum 확인할 시그널 번호
+반환|1 집합에 시그널이 있음<br />0 집합에 시그널이 없음<br />-1 확인에 실패했음
+
 ```c
 #include<signal.h>
 #include<stdio.h>
