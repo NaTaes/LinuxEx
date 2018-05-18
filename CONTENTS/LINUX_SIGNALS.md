@@ -637,7 +637,44 @@ int main(void)
 }
 ```
 
-#### 9. 시그널(signal)을 받았을 때 시간, 시그널 저장하기
+#### 9. 시간 받기
+
+```
+#include<stdio.h>
+#include<time.h>
+#include<sys/time.h> //for gettimeofday() function
+#include<stdlib.h>
+
+#define BUFSIZE 256
+
+int main(int argc, char *argv[])
+{
+	int i, j;
+	time_t UTCtime;
+	struct tm *tm;
+	char buf[BUFSIZE];
+	struct timeval UTCtime_u;
+
+	time(&UTCtime);
+	printf("time : %u\n", (unsigned)UTCtime); //UTC now time print
+
+	gettimeofday(&UTCtime_u, NULL); //get UTC now time(micro second)
+	printf("gettimeofday : %ld/%d\n", UTCtime_u.tv_sec, UTCtime_u.tv_usec);
+
+	printf("ctime : %s", ctime(&UTCtime)); //now time to string and print
+
+	tm = localtime(&UTCtime); //tm = gmtime(&UTCtime);
+	printf("asctime : %s", asctime(tm)); //now time, use tm struct print
+
+	strftime(buf, sizeof(buf), "%Y/%m/%e %A %H:%M:%S", tm); //user time string set
+
+	printf("strftime : %s\n", buf);
+
+	return 0;
+}
+```
+
+#### 10. 시그널(signal)을 받았을 때 시간, 시그널 저장하기
 ```c
 //Process1
 #include<stdio.h>
