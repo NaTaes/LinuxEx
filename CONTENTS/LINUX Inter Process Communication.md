@@ -343,13 +343,13 @@ struct {
 }
 ```
 
-##### 1) msgget()함수 사용
+##### 1) msgget()함수, msgsnd()함수, msgrcv()함수, msgctl()함수 사용
 msgget()은 메시지 큐를 생성한다.
 
 구분|설명
 ----|----
 헤더|sys/types.h, sys/ipc.h, sys/msg.h
-형태|**int** msgget (key_t key, **int** msgflg)
+형태|**int** msgget(key_t key, **int** msgflg)
 인수|key_t key 시스템에서 다른 큐와 구별하기 위한 번호<br/>**int** msgflg 옵션
 반환|-1 이외의 메세지 큐 식별자 성공<br/>-1 실패
 
@@ -357,4 +357,73 @@ msgflg|의미
 ------|---
 IPC_CREAT|key에 해당하는 큐가 있다면 큐의 식별자를 반환하며, 없으면 생성합니다.
 IPC_EXCL|key에 해당하는 큐가 없다면 생성하지만 있다면 -1을 반환하고 복귀합니다.
+
+msgsnd()은 메시지 큐로 데이터를 전송한다.
+
+구분|설명
+----|----
+헤더|sys/types.h, sys/ipc.h, sys/msg.h
+형태|**int** msgsnd(**int** msqid, **const void** \*msgp, size_t msgsz, **int** msgflg)
+인수|**int** msqid 메시지 큐 식별자<br/>**const void** \*msgp 전송할 자료<br/>size_t msgsz 전송할 자료의 크기<br/>**int** msgflg 옵션
+반환|0 성공<br/>-1 실패
+
+msgflg|의미
+------|---
+0|큐에 공간이 생길 때 까지 기다립니다.
+IPC_NOWAIT|큐에 여유 공간이 없다면 바로 -1 로 복귀합니다.
+
+msgrcv()은 메시지 큐로부터 데이터를 수신한다.
+
+구분|설명
+----|----
+헤더|sys/types.h, sys/ipc.h, sys/msg.h
+형태|**int** msgrcv(**int** msqid, **const void** \*msgp, size_t msgsz, **long** msgtyp, **int** msgflg)
+인수|**int** msqid 메시지 큐 식별자<br/>**const void** \*msgp 전송할 자료<br/>size_t msgsz 전송할 자료의 크기<br/>**long** msgtyp 옵션<br/>**int** msgflg 옵션
+반환|0 성공<br/>-1 실패
+
+
+msgtyp|의미
+------|---
+0|큐에 자료가 있다면 첫 번째의 자료를 읽어 들인다.
+양수|양수로 지정한 값과 같은 data_type의 자료 중 첫 번째를 읽어 들인다.
+음수|음수 값을 절대 값으로 변경하고, 이 절대값과 같거나 보다 제일 작은 data_type의 자료를 구한다. 메시지 큐에 data_type 이 1, 5, 15 이고 -10을 지정했다면 1의 데이터를 구하게 된다.
+
+msgflg|의미
+------|---
+IPC_NOWAIT|메시지 큐에 메시지가 없다면 기다리지 않고 -1 로 복귀한다.
+MSG_NOERROR|메시지 큐에 있는 자료가 준비된 데이터 크기보다 크다면 초과 부분을 잘라 내고 읽어 들일 수 있는 부분만 담아온다. 이 옵션이 없다면 메시지 큐에 자료가 있다고 하더라도 -1 로 실패된다.
+
+msgctl()은 메시지 큐의 현재 상태 정보를 구할 수 있고, 변경하거나 아예 메시지 큐를 삭제 할 수 있다.
+
+구분|설명
+----|----
+헤더|sys/types.h, sys/ipc.h, sys/msg.h
+형태|**int** msgctl(**int** msqid, **int** cmd, **struct** msqid_ds \*buf)
+인수|**int** msqid 메시지 큐 식별자<br/>**int** cmd 제어 명령<br/>**struct** msqid_ds \*buf 메시지 큐 정보를 받을 버퍼
+반환|0 성공<br/>-1 실패
+
+cmd|의미
+------|---
+IPC_STAT|메시지 큐의 현재 상태를 buf에 저장한다.
+IPC_SET|메시지 큐의 상태를 buf 값으로 변경한다. 그러나 모든 정보는 안되고 msg_perm과 msg_qbytes 내용만 변경할 수 있다.
+IPC_RMID|메시지 큐를 삭제한다. 이럴 때에는 buf가 필요 없으므로 buf를 0으로 지정한다.
+
+세번째 인수인 buf의 구조는 다음과 같다.
+```c
+struct msqid_ds {
+        struct ipc_perm msg_perm;
+        struct msg *msg_first;          /* first message on queue,unused  */
+        struct msg *msg_last;           /* last message in queue,unused */
+        __kernel_time_t msg_stime;      /* last msgsnd time */
+        __kernel_time_t msg_rtime;      /* last msgrcv time */
+        __kernel_time_t msg_ctime;      /* last change time */
+        unsigned long  msg_lcbytes;     /* Reuse junk fields for 32 bit */
+        unsigned long  msg_lqbytes;     /* ditto */
+        unsigned short msg_cbytes;      /* current number of bytes on queue */
+        unsigned short msg_qnum;        /* number of messages in queue */
+        unsigned short msg_qbytes;      /* max number of bytes on queue */
+        __kernel_ipc_pid_t msg_lspid;   /* pid of last msgsnd */
+        __kernel_ipc_pid_t msg_lrpid;   /* last receive pid */
+};
+```
 
