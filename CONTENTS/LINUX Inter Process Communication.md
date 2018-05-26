@@ -7,7 +7,7 @@ Linux Inter Process Communication(IPC)
 - 한 프로세스의 output을 다른 프로세스의 input으로 보내는 방법
 
 #### 1) popen()함수, pclose()함수 사용
-- popen()은 파이프의 기능을 이용하여 다른 프로그램의 실행 결과를 읽어 들이거나, 다른프로그램의 표준 입력 장치로 출력 할 수 있다.
+popen()은 파이프의 기능을 이용하여 다른 프로그램의 실행 결과를 읽어 들이거나, 다른프로그램의 표준 입력 장치로 출력 할 수 있다.
 
 구분|설명
 ----|----
@@ -21,7 +21,7 @@ type|의미
 'r'|파이프를 통해 입력 받습니다.
 'w'|파이프로 출력합니다.
 
-- pclose()은 popen()에서 열기를 한 파이프 핸들 사용을 종료한다.
+pclose()은 popen()에서 열기를 한 파이프 핸들 사용을 종료한다.
 
 구분|설명
 ----|----
@@ -63,7 +63,7 @@ int main()
 ```
 
 #### 2) pipe()함수 사용
-- pipe()은 디스크립터를 이용하여 프로세스끼리 통신(IPC)을 위해 파이프를 생성한다. 단 pipe()에서 생성한 파이프는 입출력 방향이 정해져 있다.
+pipe()은 디스크립터를 이용하여 프로세스끼리 통신(IPC)을 위해 파이프를 생성한다. 단 pipe()에서 생성한 파이프는 입출력 방향이 정해져 있다.
 
 구분|설명
 ----|----
@@ -159,6 +159,139 @@ int main()
 			data_processed = read(file_pipes[0], buffer, BUFSIZ); //pipe 읽기 디스크립터로 read한다.
 			printf("parent Read %d bytes: %s\n", data_processed, buffer); //읽은 내용을 출력
 
+			wait(&status); //자식 프로세스가 끝나기를 기다린다.
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+##### 3. 서로 다른 프로세스간의 pipe를 이용하기 위한 argv 전달 \[그림.3]을 argv전달로 해결
+- concept
+> process1 -> fork() -> child : process2를 execl()로 실행 및 읽기 pipe 디스크립터 전달, parent : pipe에 쓰기<br/>process2 -> argv로 받은 pipe 읽기 디스크립터를 이용해서 pipe에서 읽기
+
+```c
+//process1
+#include<unistd.h> 
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+
+int main() 
+{ 
+       	int data_processed;
+	int file_pipes[2]; 
+	const char some_data[]="123";
+	char buffer[BUFSIZ + 1];
+	int status;
+	pid_t fork_result;
+	memset(buffer,'\0', sizeof(buffer)); 
+	if(pipe(file_pipes)==0)
+	{
+		fork_result = fork();
+		if(fork_result==-1) //fork fail
+		{
+			fprintf(stderr,"Fork failure");
+			exit(EXIT_FAILURE);
+		}
+		if(fork_result==0) //child process
+		{
+			sprintf(buffer,"%d", file_pipes[0]); //pipe 읽기 디스크립터를 buffer에 저장
+			execl("pipe4", "pipe4", buffer, (char *)0); //process2를 실행하면서 인자값으로 buffer를 전달
+			exit(EXIT_FAILURE); //실행이 제대로 되지않았다면 FAILURE
+		}
+		else //parent process
+		{
+			data_processed=write(file_pipes[1], some_data, strlen(some_data)); //pipe에 some_data를 write한다.
+			printf("%d - wrote %d bytes\n", getpid(), data_processed); //자신의 pid와 쓴 길이를 출력
+			wait(&status); //자식프로세스가 끝나기를 기다린다.
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+```c
+//process2
+#include<unistd.h> 
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+
+int main(int argc, char *argv[])
+{ 
+	int data_processed;
+	char buffer[BUFSIZ + 1];
+	int file_descriptor;
+
+	memset(buffer,'\0', sizeof(buffer)); //buffer 초기화
+	sscanf(argv[1], "%d", &file_descriptor); //argv로 받은 pipe 읽기 디스크립터를 file_descriptor에 저장
+       	data_processed = read(file_descriptor, buffer, BUFSIZ); //pipe에서 내용을 읽어 buffer에 저장
+	printf("%d - read %d bytes: %s\n", getpid(), data_processed, buffer); //자신의 pid값과 읽은 내용을 출력
+	exit(EXIT_SUCCESS);
+}
+```
+
+##### 4. 부모 프로세스와 자식 프로세스간의 일방통행 pipe사용, dup()활용
+dup()은 파일 디스크립터 복사본을 만든다. 원본 디스크립터와 복사된 디스크립터의 읽기/쓰기 포인터는 공유된다.
+
+구분|설명
+----|----
+헤더|unistd.h
+형태|**int** dup(**int** fildes)
+인수|**int** fildes 파일 디스크립터
+반환|복사된 파일 디스크립터 번호로 사용되지 않은 가장 작은 번호가 자동으로 지정되어 반환<br/>함수 실행이 실패되면 -1 이 반환
+
+```c
+#include<unistd.h> 
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+
+int main() 
+{  
+	int data_processed;
+	int file_pipes[2]; 
+	const char some_data[]="123"; 
+	int fd;
+	int status;
+	pid_t fork_result;
+	if(pipe(file_pipes)==0)
+	{
+		fork_result = fork(); //자식 프로세스 생성
+		if(fork_result==-1)
+		{ 
+			fprintf(stderr,"Fork failure"); 
+			exit(EXIT_FAILURE);
+		}
+		if(fork_result==0) //child process
+		{
+			close(0); //파일 디스크립터 0 = stdin, 파일 디스크립터 1 = stdout, 파일 디스크립터 2 = stderr
+			fd = dup(file_pipes[0]); //읽기 전용 pipe 디스크립터를 복사
+			if(fd != -1)
+				printf("dup fd = %d\n", fd); //0번째 디스크립터가 없으므로 가장작은 번호인 0으로 fd값이 저장된다.
+			else
+				printf("can't dup\n");
+			close(file_pipes[0]); //읽기 전용 pipe 디스크립터를 close
+			close(file_pipes[1]); //쓰기 전용 pipe 디스크립터를 close
+			//자식 프로세스는 0번째 디스크립터 위치에 복사본 읽기 전용 pipe 디스크립터만 가지고 있다.
+			execlp("od", "od", "-c", (char *)0);
+			//stdin(표준 입력-키보드)대신 pipe에 some_data값이 저장되어 있으므로 대체되어 od -c [pipe에 쓴 값] 으로 출력된다.
+			exit(EXIT_FAILURE);
+		}
+		else //parent process
+		{
+			close(file_pipes[0]); //읽기 전용 pipe 디스크립터를 close
+			//부모 프로세스는 쓰기 전용 pipe 디스크립터만 가지고 있다.
+			data_processed = write(file_pipes[1], some_data, strlen(some_data)); //pipe에 some_data를 write한다
+			close(file_pipes[1]); //쓰기 전용 pipe 디스크립터를 close
+			printf("%d - wrote %d bytes\n", (int)getpid(), data_processed); //자신의 pid값과 pipe에 쓴 길이를 출력
 			wait(&status); //자식 프로세스가 끝나기를 기다린다.
 		}
 	}
