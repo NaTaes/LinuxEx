@@ -298,3 +298,35 @@ int main()
 	exit(EXIT_SUCCESS);
 }
 ```
+
+
+2.FIFO(named pipe)란?
+---------
+- FIFO는 First In First Out의 줄임말이다. 먼저 입력된게 먼저 출력되는 선입선출의 데이터 구조를 의미한다.
+- 전혀 관련 없는 프로세스들 사이에서 pipe를 이용해서 통신을 하려면 pipe에 이름이 주어져야한다. 그렇기 때문에 FIFO를 사용한다.
+- pipe()에서 생성한 파이프를 이용하는 것은 부모, 자식 프로세스에서만 사용된다. 그러나 FIFO를 이용하면 서로 다른 프로세스에서 사용할 수 있으며, FIFO를 생성하는 파일 이름을 알고 있다면 누구나 사용할 수 있다.
+
+##### mkfifo()함수 사용
+
+구분|설명
+----|----
+헤더|sys/types.h, sys/stat.h
+형태|**int** mkfifo(**const char** \*pathname, mode_t mode)
+인수|**const char** \*pathname 파이프로 사용할 파일 이름<br/>mode_t mode FIFO파일에 대한 접근 권한
+반환|0 성공<br/>-1 실패, errno에 에러 번호가 설정된다.
+
+```c
+#include<unistd.h> 
+#include<stdlib.h> 
+#include<stdio.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+
+int main()
+{ 
+	int res = mkfifo("/tmp/my_fifo", 0777); // /tmp/my_fifo를 만든다. 접근권한은 0777
+	if(res == 0) 
+		printf("FIFO created\n");
+	exit(EXIT_SUCCESS);
+}
+```
