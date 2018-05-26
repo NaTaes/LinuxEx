@@ -73,3 +73,95 @@ int main()
 반환|0 성공<br/>-1 실패
 > filedes\[0] 은 파이프의 읽기 전용 디스크립터<br/>filedes\[1] 은 파이프의 쓰기 전용 디스크립터
 
+![pipe1](./../img/pipe1.PNG)\[그림.1]
+
+그림.1과 같이 pipe는 같은 출구과 입구를 사용하고 있기 때문에 만일 프로레스끼리 쌍방향 통신을 해야 한다면 Parent쪽에서 보낸 것을 child에서 읽기 전에 먼저 읽는다면 child는 읽을 수 없습니다.
+
+![pipe2](./../img/pipe2.PNG)\[그림.2]
+
+그렇기 때문에 그림.3과 같은 방법으로 parent의 read를 끊어버리고 child의 write를 끊어버린다면, 일방 통행이 가능한 pipe가 됩니다.
+
+![pipe3](./../img/pipe3.PNG)\[그림.3]
+
+결국 두개의 프로세스에서 pipe를 이용해서 read, write를 하려면 두개의 일방 통행 pipe를 생성하면 됩니다.
+하지만, 서로다른 프로그램에서 실행된다면 프로세스는 디스크립터를 사용할 수 없기 때문에 FIFO를 이용해야한다.
+
+##### 1. 하나의 pipe로 자신이 write한 내용을 자신이 read하는 코드 \[그림.1]
+```c
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<unistd.h>
+
+int main() 
+{ 
+	int data_processed; 
+	int file_pipes[2]; 
+	const char some_data[] = "123"; 
+	char buffer[BUFSIZ + 1];
+	memset(buffer, '\0', sizeof(buffer));
+	if (pipe(file_pipes) == 0)
+	{
+		data_processed = write(file_pipes[1], some_data, strlen(some_data)); //pipe 쓰기 디스크립터에 some_data를 write한다.
+		printf("Wrote %d bytes\n", data_processed); //읽어들인 길이를 출력
+		data_processed = read(file_pipes[0], buffer, BUFSIZ); //pipe 읽기 디스크립터에서 내용을 buffer에 저장한다.
+		printf("Read %d bytes: %s\n", data_processed, buffer); //buffer의 내용을 출력
+		exit(EXIT_SUCCESS);
+	}
+	exit(EXIT_FAILURE);
+}
+```
+
+##### 2. fork()를 사용해서 부모 프로세스 자식프로세스간 pipe()사용 \[그림.1]
+```c
+#include<unistd.h> 
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+
+int main() 
+{ 
+       	int data_processed;
+	int file_pipes[2]; 
+       	const char some_data[]="123"; 
+       	const char some_data2[]="456"; 
+	char buffer[BUFSIZ + 1]; 
+	pid_t fork_result;
+	int status;
+     	memset(buffer,'\0', sizeof(buffer)); 
+	
+	if(pipe(file_pipes)==0)
+	{ 
+		fork_result = fork(); //자식 프로세스 생성
+		if(fork_result==-1)
+		{
+			fprintf(stderr,"Fork failure"); 
+			exit(EXIT_FAILURE);
+		}
+		if (fork_result == 0) 
+		{ 
+			sleep(1); //프로세스 속도때문에 자식이 부모의 쓰기 디스크립터를 읽어버린다.
+			data_processed = write(file_pipes[1], some_data2, strlen(some_data2)); //456을 pipe 쓰기 디스크립터에 write한다.
+			printf("child Wrote %d bytes\n", data_processed); //쓴 내용을 출력
+
+			data_processed = read(file_pipes[0], buffer, BUFSIZ); //pipe 읽기 디스크립터로 read한다.
+			printf("child Read %d bytes: %s\n", data_processed, buffer); //읽은 내용을 출력
+
+			exit(EXIT_SUCCESS);
+		}
+		else
+		{
+			data_processed = write(file_pipes[1], some_data, strlen(some_data)); //123을 pipe 쓰기 디스크립터에 write한다.
+			printf("parent Wrote %d bytes\n", data_processed); //쓴 내용을 출력
+
+			data_processed = read(file_pipes[0], buffer, BUFSIZ); //pipe 읽기 디스크립터로 read한다.
+			printf("parent Read %d bytes: %s\n", data_processed, buffer); //읽은 내용을 출력
+
+			wait(&status); //자식 프로세스가 끝나기를 기다린다.
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
+```
