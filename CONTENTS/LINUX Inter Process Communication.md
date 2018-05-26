@@ -427,7 +427,7 @@ struct msqid_ds {
 };
 ```
 
--concept
+- concept
 > process1 : name, age, id를 입력한다. 입력한 내용을 메시지 큐에 send한다.<br/>process2 : 파일을 열고 메시지 큐의 내용을 recv한 내용을 파일에 write한다.
 
 ```c
