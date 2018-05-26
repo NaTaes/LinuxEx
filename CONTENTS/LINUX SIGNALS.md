@@ -205,9 +205,7 @@ int main(int argc, char *argv[])
 
 #### 3) 두 프로세스간 양방향 시그널 보내기
 - concept
-> process1(kill) → process2(pause)
-
-> process1(pause) ← process2(kill)
+> process1(kill) → process2(pause)<br/>process1(pause) ← process2(kill)
 ```c
 //process1
 #include<stdio.h>
@@ -334,7 +332,7 @@ raise()은 프로세스 자신에게 시그널을 보낸다.<br />kill(getpid(),
 구분|설명
 ----|----
 헤더|signal.h
-형태|**int** raise(**int** sig);
+형태|**int** raise(**int** sig)
 인수|**int** sig	전송하려는 시그널 번호
 반환|0 성공<br />0 이외의 값 실패
 
