@@ -69,7 +69,7 @@ Linux Signals
 
 5.시그널(signal) 실습 코드
 -------------------------
-#### 1. SIG_INT와 SIG_QUIT를 받는 시그널 핸들러
+#### 1) SIG_INT와 SIG_QUIT를 받는 시그널 핸들러
 signal()은 시그널 처리를 설정한다.
 
 구분|설명
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 }
 ```
 
-#### 2. SIG_INT시그널 다른 프로세스에 보내기
+#### 2) SIG_INT시그널 다른 프로세스에 보내기
 ```c
 //SIG_INT를 받는 코드
 #include<stdio.h>
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
 ```
 
-#### 3. 두 프로세스간 양방향 시그널 보내기
+#### 3) 두 프로세스간 양방향 시그널 보내기
 - concept
 > process1(kill) → process2(pause)
 
@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
 }
 ```
 
-#### 4. raise()함수 사용
+#### 4) raise()함수 사용
 raise()은 프로세스 자신에게 시그널을 보낸다.<br />kill(getpid(), SIGINT) == raise(SIGINT)
 
 구분|설명
@@ -367,7 +367,7 @@ int main(void)
 }
 ```
 
-#### 5. sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
+#### 5) sigemptyset()함수, sigaddset()함수, sigprocmask()함수, sigpending()함수, sigismember()함수 사용
 sigemptyset()은 signal sets를 비운다.
 
 구분|설명
@@ -462,7 +462,7 @@ static void sigHandler(int signo)
 }
 ```
 
-#### 6. sigaction()함수 사용
+#### 6) sigaction()함수 사용
 sigaction()은 signal()보다 향상된 기능을 제공하는 시그널 처리를 결정하는 함수다.
 
 구분|설명
@@ -515,7 +515,7 @@ int main()
 }
 ```
 
-#### 7. 6번코드 + sigaction()
+#### 7) 6번코드 + sigaction()
 ```c
 #include<signal.h>
 #include<stdio.h>
@@ -575,7 +575,7 @@ static void sigHandler(int signo)
 }
 ```
 
-#### 8. sigsuspend()함수
+#### 8) sigsuspend()함수
 sigsuspend()은 시그널 블록을 설정하고, 시그널이 도착할 때 까지 프로세스를 중단합니다.
 
 구분|설명
@@ -637,7 +637,7 @@ int main(void)
 }
 ```
 
-#### 9. 시간 받기
+#### 9) 시간 받기
 
 ```
 #include<stdio.h>
@@ -674,7 +674,7 @@ int main(int argc, char *argv[])
 }
 ```
 
-#### 10. 시그널(signal)을 받았을 때 시간, 시그널 저장하기
+#### 10) 시그널(signal)을 받았을 때 시간, 시그널 저장하기
 ```c
 //Process1
 #include<stdio.h>
