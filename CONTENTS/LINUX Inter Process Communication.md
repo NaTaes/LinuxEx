@@ -427,3 +427,147 @@ struct msqid_ds {
 };
 ```
 
+-concept
+> process1 : name, age, id를 입력한다. 입력한 내용을 메시지 큐에 send한다.<br/>process2 : 파일을 열고 메시지 큐의 내용을 recv한 내용을 파일에 write한다.
+
+```c
+//process1
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<errno.h> 
+#include<unistd.h> 
+#include<sys/types.h> 
+#include<sys/ipc.h> 
+#include<sys/msg.h>
+
+struct person{
+	long msg_type;
+       	char name[10];
+	int age;
+	int id;
+};
+
+int main() 
+{ 
+	int running = 1;
+	struct person who;
+	int msgid;
+	char buffer[BUFSIZ];
+	msgid = msgget((key_t)0x1234, 0666 | IPC_CREAT);
+	
+	if (msgid == -1)
+       	{
+		fprintf(stderr, "msgget failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+	while(running) 
+	{
+		who.msg_type = 1;
+
+		printf("Enter name : ");
+		scanf("%s", who.name);
+
+		printf("Enter age : ");
+		scanf("%d", &who.age);
+		
+		printf("Enter id : ");
+		scanf("%d", &who.id);
+
+		printf("continue?(y/n) : ");
+		scanf("%s", buffer);
+		
+		if(strcmp("n", buffer) == 0) //n이 입력되면 running이 0이되면서 while문을 수행하지 않는다.
+		{
+			running = 0;
+			who.msg_type = 2; //마지막으로 보낼 msg는 msg_type을 2로 해서 보낸다.
+		}
+
+		if (msgsnd(msgid, (void *)&who, sizeof(who), 0) == -1) 
+		{
+			fprintf(stderr, "msgsnd failed\n");
+		       	exit(EXIT_FAILURE);
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+```c
+//process2
+#include<stdlib.h> 
+#include<stdio.h> 
+#include<string.h>
+#include<errno.h> 
+#include<unistd.h> 
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<sys/ipc.h> 
+#include<sys/msg.h>
+#include<fcntl.h>
+
+struct person{
+	long msg_type;
+	char name[10];
+	int age;
+	int id;
+};
+
+int main() 
+{ 
+	int fd;
+	int running = 1;
+	int msgid;
+	char buffer[BUFSIZ];
+	char buf[10];
+	struct person who;
+	long int msg_to_receive = 0;
+
+	fd = open("./person.txt", O_RDWR | O_CREAT | O_APPEND, \
+			S_IRWXU | S_IWGRP | S_IRGRP | S_IROTH);
+
+	msgid = msgget((key_t)0x1234, 0666 | IPC_CREAT);
+	if (msgid == -1)
+	{
+		fprintf(stderr, "msgget failed with error: %d\n", errno);
+	       	exit(EXIT_FAILURE);
+	}
+
+	while(running)
+	{
+		if (msgrcv(msgid, (void *)&who, BUFSIZ, msg_to_receive, 0) == -1)
+		{
+			fprintf(stderr, "msgrcv failed with error: %d\n", errno);
+			exit(EXIT_FAILURE);
+		} 
+
+		printf("name : %s\n", who.name);
+		printf("age : %d\n", who.age);
+		printf("id : %d\n", who.id);
+
+		sprintf(buffer, "name : %s\n", who.name);
+		write(fd, buffer, strlen(buffer));
+
+		sprintf(buffer, "age : %d\n", who.age);
+		write(fd, buffer, strlen(buffer));
+
+		sprintf(buffer, "id : %d\n", who.id);
+		write(fd, buffer, strlen(buffer));
+
+		write(fd, "--------------------\n", 21);
+
+		//수신 받은 메시지의 msg_type이 2라면 process1에서 더이상 메시지를 보내지않는다는 것으로 다음 while을 수행하지 않는다.
+		if (who.msg_type == 2)
+	       	{
+			running = 0;
+		}
+	}
+	if (msgctl(msgid, IPC_RMID, 0) == -1) 
+	{
+		fprintf(stderr, "msgctl(IPC_RMID) failed\n");
+	       	exit(EXIT_FAILURE);
+	}
+	close(fd);
+	exit(EXIT_SUCCESS);
+}
+```
