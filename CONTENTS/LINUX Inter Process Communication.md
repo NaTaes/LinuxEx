@@ -578,9 +578,84 @@ int main()
 - 즉, 공유 메모리를 사용하기 위해서는 공유 메모리를 생성한 후에, 이 메모리가 필요한 프로세스는 필요할 때 마다 자신의 프로세스에 첨부를 한 후에 다른 메모리를 사용하듯 사용하면 된다.
 
 ![shared memory](./../img/sharedmemory.PNG)
+
 다음 그림과 같이 서로 다른 Process A, B가 물리적인 메모리를 공유하여 사용할 수 있다.
 
 ##### 1) shmget()함수, shmat()함수, shmdt()함수, shmctl()함수 사용
+shmget()은 공유메모리를 생성한다.
+
+구분|설명
+----|----
+헤더|sys/ipc.h, sys/shm.h
+형태|**int** shmget(key_t key, **int** size, **int** shmflg)
+인수|key_t key 공유 메모리를 구별하는 식별 번호<br/>**int** size 공유 메모리 크기<br/>**int** shmflg 동작 옵션
+반환|-1 이외의 수(공유메모리 식별자) 성공<br/>-1 실패
+
+shmflg|옵션 내용
+------|--------
+IPC_CREATE|key에 해당하는 공유 메모리가 없다면 새로 생성한다. 만약있다면 무시하며 생성을 위해 접근 권한을 지정해 주어야 한다.
+IPC_EXCL|공유 메모리가 이미 있다면 실패로 반환하며 공유 메모리에 접근하지 못한다. 이 옵션이 없어야 기존 공유 메모리에 접근할 수 있다.
+
+shmat()은 공유메모리를 마치 프로세스의 몸안으로 첨부한다.(연결)
+
+구분|설명
+----|----
+헤더|sys/type.h, sys/shm.h
+형태|**void** \*shmat(**int** shmid, **const void** \*shmaddr, **int** shmflg)
+인수|**int** shmid 공유 메모리를 구별하는 식별 번호<br/>**const void** \*shmaddr 첨부되는 어드레스 주소. 일반적으로 NULL을 지정<br/>**int** shmflg 동작 옵션
+반환|-1 이외의 수(공유메모리 주소) 성공<br/>(void \*)-1 실패
+
+shmflg|옵션 내용
+------|--------
+SHM_RDONLY|공유 메모리를 읽기 전용으로
+SHM_RND|shmaddr이 NULL이 아닌 경우일 때만 사용되며, shmaddr을 반올림하여 메모리 페이지 경계에 맞춘다.
+
+shmdt()은 프로세스에 첨부된 공유메모리를 프로세스에서 분리한다.
+
+구분|설명
+----|----
+헤더|sys/type.h, sys/shm.h
+형태|**int** shmdt(**const void** \*shmaddr)
+인수|**const void** \*shmaddr 분리할 공유 메모리 주소
+반환|0 성공<br/>-1 실패
+
+shmctl()은 공유메모리에 대한 정보를 구하거나 변경 또는 제거 한다.
+
+구분|설명
+----|----
+헤더|sys/ipc.h, sys/shm.h
+형태|**int** shmctl(**int** shmid, **int** cmd, **struct** shmid_ds \*buf)
+인수|**int** shmid 공유 메모리 식별 번호<br/>**int** cmd 제어 명령<br/>**struct** shmid_ds \*buf 공유 메모리 정보 구하기 위한 버퍼 포인터 
+반환|0 성공<br/>-1 실패
+
+```c
+struct shmid_ds {
+  struct    ipc_perm shm_perm;/* 접근권한 */
+  int  shm_segsz;            /* 세그먼트의 크기(bytes) */
+  time_t    shm_atime;       /* 마지막 접근 시간 */
+  time_t    shm_dtime;       /* 마지막 제거 시간 */
+  time_t    shm_ctime;       /* 마지막 변경 시간 */
+  unsigned short shm_cpid; /* 생성자의 프로세스의 프로세스 id */
+  unsigned short shm_lpid; /* 마지막으로 작동한 프로세스의 프로세스 pid */
+  short     shm_nattch;     /* 현재 접근한 프로세스의 수 */
+  /* 다음은 개별적이다 */
+  unsigned short   shm_npages; /* 세그먼트의 크기(pages) */
+  unsigned long   *shm_pages;
+  struct shm_desc *attaches;    /* 접근을 위한 기술자들 */
+  };
+
+shm_perm 멤버의 필드들은 아래와 같이 설정할 수 있습니다.
+struct ipc_perm{
+       key_t  key;
+       ushort uid;   /* owner의 euid 와 egid */
+       ushort gid;
+       ushort cuid;  /* 생성자의 euid 와 egid */
+       ushort cgid;
+       ushort mode;  /* 접근 모드의 하위 9 bits */
+       ushort seq;   /* 연속 수(sequence number) */
+     };
+```
+
 - concept
 > process1 : 메시지 큐로 process2에 자신의 pid를 send<br/>process2 : process1의 pid를 받고 자신의 pid를 메시지큐로 send 후 시그널을 보낸다.<br/>process1 : 공유메모리를 생성 → 공유메모리 첨부 → 공유메모리에 0~100까지의 숫자를 입력 → process2에 시그널 보낸 후 pause상태<br/>process2 : 공유메모리 생성 → 공유메모리 첨부 → 공유메모리의 숫자를 읽어온다. → process1에 시그널을 보낸다. → 첨부를 해제한다.<br/>process1 : 공유메모리첨부를 해제한다. → 공유메모리를 제거한다.
 
@@ -832,6 +907,283 @@ int main(void)
 		fprintf(stderr, "shmdt failed\n");
 		exit(EXIT_FAILURE);
 	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+##### 2) 1)의 내용을 fork()사용으로 자식이 process2를 실행시키면서 process1의 파일 내용을 process2에서 복사 파일 만들기
+```c
+//process1
+#include<stdio.h>
+#include<unistd.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<signal.h>
+#include<string.h>
+#include<sys/msg.h>
+#include<sys/wait.h>
+#include"MyKey.h"
+
+volatile sig_atomic_t quitflag = 1;
+
+static void sigHandler(int sig){}
+
+int main(void)
+{
+	pid_t cpid;
+	
+	key_t Keyvalue;
+	struct Mystatus st;
+	int msgid;
+	
+	void *shared_Mem = (void*)0;
+	int shmid;
+	char *shmaddr;
+	long int msg_to_receive = 0;
+	
+	int i;
+	char buf[10];
+	char fdbuf[SHMSIZE];
+	int size;
+	int status;
+
+	FILE *fd;
+	
+	printf("my(write) pid is %d\n", getpid());
+	
+	if(signal(SIGUSR1, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGUSR2)\n");
+
+		//1. shmget
+		shmid = shmget(SHMKEY, sizeof(char) * SHMSIZE, 0666 | IPC_CREAT);
+		if(shmid == -1)
+		{
+			fprintf(stderr, "shmget failed\n");
+			exit(EXIT_FAILURE);
+		}
+
+		//2. shmat
+		shared_Mem = shmat(shmid, (void*)0, 0);
+		if(shared_Mem == (void*)-1)
+		{
+			fprintf(stderr, "shmat failed\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		sprintf(buf, "%d", shmid);		
+
+		printf("parent : Memory attached at 0x%p\n", shared_Mem);
+		shmaddr = (char*)shared_Mem;
+
+
+	if((cpid = fork()) == -1) //failed
+	{
+		printf("ERROR : SYSTEM fork() failed\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	if(cpid == 0) //child
+	{
+		printf("Im child\n");
+		if(execlp("./shmreader3", "./shmreader3", buf, NULL) == -1)
+		{
+			printf("ERROR : SYSTEM execlp() failed\n");
+			exit(EXIT_FAILURE);
+		}
+		printf("execlp() success\n");
+	}
+	else //parent
+	{		
+		printf("Im parent\n");
+		printf("my child pid is %d\n", cpid);
+		
+		Keyvalue = ftok(STRING, PROJ_ID);
+		msgid = msgget(Keyvalue, 0666 | IPC_CREAT);
+		
+		if(msgid == -1)
+		{
+			fprintf(stderr, "msgget failed with error: %d\n", errno);
+			exit(EXIT_FAILURE);
+		}
+		st.msg_type = 1;
+		
+		fd = fopen(FILE_NAME1, "rb");
+		
+		while(quitflag)
+		{
+			if(msgrcv(msgid, (void *)&st, sizeof(st), msg_to_receive, 0) == -1)
+			{
+				fprintf(stderr, "msgrcv failed with error: %d\n", errno);
+				exit(EXIT_FAILURE);
+			}
+			
+			//3. memory access
+			size = fread(fdbuf, 1, SHMSIZE, fd);
+			
+			if(size == -1)
+			{
+				printf("ERROR : SYSTEM read() failed\n");
+				exit(EXIT_FAILURE);
+			}
+			if(size < SHMSIZE)
+				quitflag = 0;
+			
+			//3. memory access
+			strcpy(shmaddr, fdbuf);
+			
+			st.len = size;
+			
+			if(msgsnd(msgid, (void *)&st, sizeof(st), 0) == -1)
+			{
+				fprintf(stderr, "msgsnd failed\n");
+				exit(EXIT_FAILURE);
+			}
+
+			usleep(1);
+			kill(cpid, SIGUSR1);
+			pause();
+		}
+		
+		wait(&status);
+		fclose(fd);
+		
+		if (msgctl(msgid, IPC_RMID, 0) == -1) 
+		{
+			fprintf(stderr, "msgctl(IPC_RMID) failed\n");
+	       	exit(EXIT_FAILURE);
+		}
+		
+		//4. shmdt
+		if(shmdt(shared_Mem) == -1)
+		{
+			fprintf(stderr, "shmdt failed\n");
+			exit(EXIT_FAILURE);
+		}		
+		
+		//5. shmctl : IPC_RMID
+		if(shmctl(shmid, IPC_RMID, 0) == -1)
+		{
+			fprintf(stderr, "shmctl(IPC_RMID) failed\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+```
+//process2
+#include<stdio.h>
+#include<unistd.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<signal.h>
+#include<string.h>
+#include<sys/msg.h>
+#include"MyKey.h"
+
+volatile sig_atomic_t quitflag = 1;
+
+static void sigHandler(int sig){}
+
+int main(int argc, char* argv[])
+{
+	pid_t ppid;
+	
+	key_t Keyvalue;
+	struct Mystatus st;
+	int msgid;
+	
+	void *shared_Mem = (void*)0;
+	int shmid;
+	char *shmaddr;
+	long int msg_to_receive = 0;
+	
+	int i;
+	char fdbuf[SHMSIZE];
+	int size;
+	
+	FILE *fd;
+	
+	ppid = getppid();
+	printf("my parent pid is %d\n", ppid);
+	printf("my(read) pid is %d\n", getpid());
+	if(signal(SIGUSR1, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGUSR1)\n");
+	
+	shmid = atoi(argv[1]);
+
+	//2. shmat
+	shared_Mem = shmat(shmid, (void*)0, 0);
+	if(shared_Mem == (void*)-1)
+	{
+		fprintf(stderr, "shmat failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("child : Memory attached at 0x%p\n", shared_Mem);
+	shmaddr = (char*)shared_Mem;
+	
+	Keyvalue = ftok(STRING, PROJ_ID);
+	msgid = msgget(Keyvalue, 0666 | IPC_CREAT);
+	
+	if(msgid == -1)
+	{
+		fprintf(stderr, "msgget failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);	
+	}
+	st.msg_type = 1;
+	
+	fd = fopen(FILE_NAME2, "ab");
+	
+	while(quitflag)
+	{
+		if(msgsnd(msgid, (void *)&st, sizeof(st), 0) == -1)
+		{
+			fprintf(stderr, "msgsnd failed\n");
+			exit(EXIT_FAILURE);
+		}
+		pause();
+
+		if(msgrcv(msgid, (void *)&st, sizeof(st), msg_to_receive, 0) == -1)
+		{
+			fprintf(stderr, "msgrcv failed with error: %d\n", errno);
+			exit(EXIT_FAILURE);
+		}
+		
+		//3. memory access
+		strncpy(fdbuf, shmaddr, st.len);
+
+		size = fwrite(fdbuf, 1, st.len, fd);
+
+		if(size < SHMSIZE)
+			quitflag = 0;
+			
+		usleep(1);
+		kill(ppid, SIGUSR1);
+	}
+
+	fclose(fd);
+
+	//4. shmdt
+	if(shmdt(shared_Mem) == -1)
+	{
+		fprintf(stderr, "shmdt failed\n");
+		exit(EXIT_FAILURE);
+	}		
+	
 	exit(EXIT_SUCCESS);
 }
 ```
