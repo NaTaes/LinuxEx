@@ -1077,7 +1077,7 @@ int main(void)
 }
 ```
 
-```
+```c
 //process2
 #include<stdio.h>
 #include<unistd.h>
