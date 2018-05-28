@@ -301,7 +301,7 @@ int main()
 
 
 2.FIFO(named pipe)란?
----------
+---------------------
 - FIFO는 First In First Out의 줄임말이다. 먼저 입력된게 먼저 출력되는 선입선출의 데이터 구조를 의미한다.
 - 전혀 관련 없는 프로세스들 사이에서 pipe를 이용해서 통신을 하려면 pipe에 이름이 주어져야한다. 그렇기 때문에 FIFO를 사용한다.
 - pipe()에서 생성한 파이프를 이용하는 것은 부모, 자식 프로세스에서만 사용된다. 그러나 FIFO를 이용하면 서로 다른 프로세스에서 사용할 수 있으며, FIFO를 생성하는 파일 이름을 알고 있다면 누구나 사용할 수 있다.
@@ -332,8 +332,7 @@ int main()
 ```
 
 3.메시지 큐 란?
----------------------
-
+---------------
 - 메시지 큐는 IPC 방법 중에 하나로 자료를 다른 프로세스로 전송할 수 있다. 전송되는 자료도 큐의 용량이 허용하는 한, 상대편이 가져가지 않는다고 하더라도 계속 전송할 수 있으며, 나중에 다른 프로세스가 큐가 비워질 때까지 계속 읽어 들일 수 있다.<br/>또한 메시지 큐는 전송한는 자료를 커널이 간직하기 때문에 전송한 프로세스가 종료되었다고 하더라고 자료가 사라지지 않는다. 즉, 전송 프로세스가 데이터를 전송한 후 종료해도, 나중에 다른 프로세스가 메시지 큐의 데이터를 가져 올 수 있다.<br/>또한 전송되는 큐의 자료는 순자적으로 가져 갈 수도 있지만 데이터 타입에 따라 원하는 자료만 가져 갈 수 있다. 즉, 메시지 큐에 전송되는 데이터 구조는 아래와 같다.
 
 ```c
@@ -343,7 +342,7 @@ struct {
 }
 ```
 
-##### 1) msgget()함수, msgsnd()함수, msgrcv()함수, msgctl()함수 사용
+##### msgget()함수, msgsnd()함수, msgrcv()함수, msgctl()함수 사용
 msgget()은 메시지 큐를 생성한다.
 
 구분|설명
@@ -568,6 +567,271 @@ int main()
 	       	exit(EXIT_FAILURE);
 	}
 	close(fd);
+	exit(EXIT_SUCCESS);
+}
+```
+
+4.공유 메모리란?
+---------------
+- 공유 메모리는 단어 뜻에서 알 수 있듯이 하나의 프로세스에서가 아니라 여러 프로세스가 함께 사용하는 메모리를 말한다. 이 공유 메모리를 이용하면 프로세스끼리 통신을 할 수 있으며, 같은 데이터를 공유할 수 있다.
+- 이렇게 같은 메모리 영역을 공유하기 위해서는 공유 메모리를 생성한 후에 프로세스의 자신의 영역에 첨부를 한 후에 마치 자신의 메모리를 사용하듯 사용한다.
+- 즉, 공유 메모리를 사용하기 위해서는 공유 메모리를 생성한 후에, 이 메모리가 필요한 프로세스는 필요할 때 마다 자신의 프로세스에 첨부를 한 후에 다른 메모리를 사용하듯 사용하면 된다.
+
+![shared memory](./../img/sharedmemory.PNG)
+다음 그림과 같이 서로 다른 Process A, B가 물리적인 메모리를 공유하여 사용할 수 있다.
+
+##### 1) shmget()함수, shmat()함수, shmdt()함수, shmctl()함수 사용
+- concept
+> process1 : 메시지 큐로 process2에 자신의 pid를 send<br/>process2 : process1의 pid를 받고 자신의 pid를 메시지큐로 send 후 시그널을 보낸다.<br/>process1 : 공유메모리를 생성 → 공유메모리 첨부 → 공유메모리에 0~100까지의 숫자를 입력 → process2에 시그널 보낸 후 pause상태<br/>process2 : 공유메모리 생성 → 공유메모리 첨부 → 공유메모리의 숫자를 읽어온다. → process1에 시그널을 보낸다. → 첨부를 해제한다.<br/>process1 : 공유메모리첨부를 해제한다. → 공유메모리를 제거한다.
+
+```c
+//process1
+#include<stdio.h>
+#include<unistd.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/msg.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<signal.h>
+
+#define SHMSIZE 100
+
+struct mq_pid{
+	long msg_type;
+	pid_t pid;
+};
+
+static void sigHandler(int sig)
+{
+	if(sig == SIGUSR1)
+	{
+		printf("I Get Signal from process2\n");
+	}	
+	if(sig == SIGUSR2)
+	{
+		printf("Process2 : Finish to read the Memory\n");
+	}
+}
+
+int main(void)
+{
+	int running = 1;
+	int msgid;
+	long int msg_to_receive = 0;
+	struct mq_pid mypid;
+	key_t Keyvalue;
+	pid_t pro2;
+
+	void *shared_Mem = (void*)0;
+	int shmid;
+	int *shmaddr;
+	int i;
+
+	Keyvalue = ftok("/home/pi", 'S');
+	msgid = msgget(Keyvalue, 0666 | IPC_CREAT);
+	
+	if(signal(SIGUSR1, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGUSR1)\n");
+	if(signal(SIGUSR2, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGUSR2)\n");
+
+	if(msgid == -1)
+	{
+		fprintf(stderr, "msgget failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+
+	mypid.msg_type = 1;
+	mypid.pid = getpid();
+	printf("My pid = %d\n", mypid.pid);
+
+	if(msgsnd(msgid, (void *)&mypid, sizeof(mypid), 0) == -1)
+	{
+		fprintf(stderr, "msgsnd failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Success to Send pid message\n");
+
+	pause();
+
+	if(msgrcv(msgid, (void *)&mypid, BUFSIZ, msg_to_receive, 0) == -1)
+	{
+		fprintf(stderr, "msgrcv failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+	pro2 = mypid.pid;
+	printf("Process2 pid : %d\n", pro2);	
+
+	if (msgctl(msgid, IPC_RMID, 0) == -1) 
+	{
+		fprintf(stderr, "msgctl(IPC_RMID) failed\n");
+	       	exit(EXIT_FAILURE);
+	}
+	
+	//1. shmget
+	shmid = shmget((key_t)1234, sizeof(int) * SHMSIZE, 0666 | IPC_CREAT);
+	if(shmid == -1)
+	{
+		fprintf(stderr, "shmget failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//2. shmat
+	shared_Mem = shmat(shmid, (void*)0, 0);
+	if(shared_Mem == (void*)-1)
+	{
+		fprintf(stderr, "shmat failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Memory attached at 0x%p\n", shared_Mem);
+	shmaddr = (int*)shared_Mem;
+
+	//3. memory access
+	for(i = 0; i<SHMSIZE; i++)
+	{
+		*(shmaddr+i) = i+1;
+		printf("shmaddr : %p, data : %d\n", shmaddr+i, *(shmaddr+i));
+	}
+	
+	kill(pro2, SIGUSR2);
+	pause();
+
+	//4. shmdt
+	if(shmdt(shared_Mem) == -1)
+	{
+		fprintf(stderr, "shmdt failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//5. shmctl : IPC_RMID
+	if(shmctl(shmid, IPC_RMID, 0) == -1)
+	{
+		fprintf(stderr, "shmctl(IPC_RMID) failed\n");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
+}
+```
+
+```c
+//process2
+#include<stdio.h>
+#include<unistd.h>
+#include<stdlib.h>
+#include<stdio.h>
+#include<errno.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/shm.h>
+#include<sys/msg.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<signal.h>
+
+#define SHMSIZE 100
+
+struct mq_pid{
+	long msg_type;
+	pid_t pid;
+};
+
+static void sigHandler(int sig)
+{
+	if(sig == SIGUSR2)
+	{
+		printf("Process1 : Finish to write the Memory\n");
+	}
+}
+
+int main(void)
+{
+	int running = 1;
+	int msgid;
+	long int msg_to_receive = 0;
+	struct mq_pid mypid;
+	key_t Keyvalue;
+	pid_t pro1;
+
+	void *shared_Mem = (void*)0;
+	int shmid;
+	int *shmaddr;
+	int i;
+
+	Keyvalue = ftok("/home/pi", 'S');
+	msgid = msgget(Keyvalue, 0666 | IPC_CREAT);
+
+	if(signal(SIGUSR2, sigHandler) == SIG_ERR)
+		printf("ERROR : system signal(SIGUSR2)\n");
+
+	if(msgid == -1)
+	{
+		fprintf(stderr, "msgget failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+	
+	if(msgrcv(msgid, (void *)&mypid, BUFSIZ, msg_to_receive, 0) == -1)
+	{
+		fprintf(stderr, "msgrcv failed with error: %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+	pro1 = mypid.pid;
+	printf("Process1 pid : %d\n", pro1);
+
+	mypid.msg_type = 1;
+	mypid.pid = getpid();
+	printf("My pid = %d\n", mypid.pid);
+	
+	if(msgsnd(msgid, (void *)&mypid, sizeof(mypid), 0) == -1)
+	{
+		fprintf(stderr, "msgsnd failed\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	printf("Success to Send pid message\n");
+
+	kill(pro1, SIGUSR1);
+	pause();
+	
+	//1. shmget
+	shmid = shmget((key_t)1234, sizeof(int) * SHMSIZE, 0666 | IPC_CREAT);
+	if(shmid == -1)
+	{
+		fprintf(stderr, "shmget failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//2. shmat
+	shared_Mem = shmat(shmid, (void*)0, 0);
+	if(shared_Mem == (void*)-1)
+	{
+		fprintf(stderr, "shmat failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Memory attached at 0x%p\n", shared_Mem);
+	shmaddr = (int*)shared_Mem;
+
+	//3. memory access
+	for(i = 0; i<SHMSIZE; i++)
+	{
+		printf("shmaddr : %p, data : %d\n", shmaddr+i, *(shmaddr+i));
+	}
+
+	kill(pro1, SIGUSR2);
+
+	//4. shmdt
+	if(shmdt(shared_Mem) == -1)
+	{
+		fprintf(stderr, "shmdt failed\n");
+		exit(EXIT_FAILURE);
+	}
 	exit(EXIT_SUCCESS);
 }
 ```
