@@ -1187,3 +1187,21 @@ int main(int argc, char* argv[])
 	exit(EXIT_SUCCESS);
 }
 ```
+
+```c
+//keyheader.h
+#define SHMSIZE 20000
+#define SHMKEY (key_t)0x1234
+
+#define STRING "/home/pi"
+#define PROJ_ID 'S'
+
+#define FILE_NAME1 "./bigsend.img"
+#define FILE_NAME2 "./receive.img"
+
+struct Mystatus
+{
+	long msg_type;
+	int len;
+};
+```
