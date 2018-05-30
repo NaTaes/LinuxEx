@@ -637,7 +637,7 @@ int main(void)
 
 #### 9) 시간 받기
 
-```
+```c
 #include<stdio.h>
 #include<time.h>
 #include<sys/time.h> //for gettimeofday() function
